@@ -1,100 +1,94 @@
-const video = document.getElementById('video');
+const video = document.createElement('video');
+video.setAttribute('autoplay', '');
+video.setAttribute('muted', '');
+video.setAttribute('playsinline', '');
+video.style.display = 'none';
+document.body.appendChild(video);
+
 const overlay = document.getElementById('overlay');
-const startBtn = document.getElementById('start');
-const resetBtn = document.getElementById('reset');
 const statusText = document.getElementById('status');
 const todayDisplay = document.getElementById('today');
 const totalDisplay = document.getElementById('total');
 const stopwatchDisplay = document.getElementById('stopwatch');
+const resetBtn = document.getElementById('reset');
 
 let startTime = 0;
 let elapsedTime = 0;
 let timerInterval = null;
 let isRunning = false;
-let isPersonPresent = false;
-
-const todayKey = new Date().toISOString().slice(0, 10);
-let totalSeconds = 0;
 let todaySeconds = 0;
+let totalSeconds = 0;
+const todayKey = new Date().toISOString().slice(0, 10);
 
 document.addEventListener('DOMContentLoaded', async () => {
   loadStoredTimes();
   await loadModels();
   startCamera();
+  resetBtn.addEventListener('click', resetTimer);
 });
 
 async function loadModels() {
-  statusText.textContent = 'Loading models...';
+  statusText.textContent = 'Loading...';
   await faceapi.nets.tinyFaceDetector.loadFromUri('models');
   await faceapi.nets.faceLandmark68Net.loadFromUri('models');
-  statusText.textContent = 'Models loaded';
+  statusText.textContent = 'Ready';
 }
 
 function startCamera() {
-  navigator.mediaDevices.getUserMedia({ video: {} })
+  navigator.mediaDevices.getUserMedia({ video: true })
     .then(stream => {
       video.srcObject = stream;
-      video.play();
-      detectFaces();
+      detectFace();
     })
     .catch(err => {
-      console.error('Camera access error:', err);
-      statusText.textContent = 'Camera error';
+      console.error(err);
+      statusText.textContent = 'Camera access blocked';
     });
 }
 
-function detectFaces() {
-  const displaySize = { width: video.width, height: video.height };
+function detectFace() {
   const canvas = faceapi.createCanvasFromMedia(video);
   overlay.replaceWith(canvas);
   canvas.id = 'overlay';
-
-  faceapi.matchDimensions(canvas, displaySize);
+  faceapi.matchDimensions(canvas, { width: video.width, height: video.height });
 
   setInterval(async () => {
-    const detections = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions());
-    if (detections) {
+    const detection = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions());
+    if (detection) {
       statusText.textContent = 'Face Detected';
-      isPersonPresent = true;
       if (!isRunning) startTimer();
     } else {
       statusText.textContent = 'No Face';
-      isPersonPresent = false;
       if (isRunning) pauseTimer();
     }
   }, 1000);
 }
 
 function startTimer() {
-  if (!isRunning) {
-    startTime = Date.now() - elapsedTime;
-    timerInterval = setInterval(updateTime, 1000);
-    isRunning = true;
-  }
+  startTime = Date.now() - elapsedTime;
+  timerInterval = setInterval(updateTime, 1000);
+  isRunning = true;
 }
 
 function pauseTimer() {
-  if (isRunning) {
-    clearInterval(timerInterval);
-    timerInterval = null;
-    isRunning = false;
-    saveTimes();
-  }
+  clearInterval(timerInterval);
+  timerInterval = null;
+  isRunning = false;
+  saveTimes();
 }
 
 function resetTimer() {
   pauseTimer();
-  elapsedTime = 0;
   todaySeconds = 0;
+  elapsedTime = 0;
   updateDisplay();
   localStorage.removeItem(todayKey);
 }
 
 function updateTime() {
   elapsedTime = Date.now() - startTime;
-  const seconds = Math.floor(elapsedTime / 1000);
-  todaySeconds = seconds;
-  totalSeconds = seconds; // Adjust if storing lifetime data separately
+  todaySeconds = Math.floor(elapsedTime / 1000);
+  totalSeconds = todaySeconds;
   updateDisplay();
 }
 
@@ -122,6 +116,3 @@ function loadStoredTimes() {
     updateDisplay();
   }
 }
-
-startBtn.addEventListener('click', startTimer);
-resetBtn.addEventListener('click', resetTimer);
