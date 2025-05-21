@@ -2,8 +2,7 @@ const video = document.createElement('video');
 video.setAttribute('autoplay', '');
 video.setAttribute('muted', '');
 video.setAttribute('playsinline', '');
-video.style.display = 'none';
-document.body.appendChild(video);
+document.body.appendChild(video); // keep video in DOM (can hide via CSS)
 
 const statusText = document.getElementById('status');
 const stopwatchDisplay = document.getElementById('stopwatch');
@@ -35,7 +34,11 @@ async function startCamera() {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ video: true });
     video.srcObject = stream;
-    detectFace();
+
+    video.onloadedmetadata = () => {
+      video.play();
+      detectFace();
+    };
   } catch (err) {
     console.error(err);
     if (err.name === 'NotAllowedError') {
