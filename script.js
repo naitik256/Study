@@ -26,6 +26,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 async function loadModels() {
   statusText.textContent = 'Loading models...';
   await faceapi.nets.tinyFaceDetector.loadFromUri('models');
+  await faceapi.nets.faceLandmark68Net.loadFromUri('models');
   statusText.textContent = 'Ready';
 }
 
@@ -50,11 +51,29 @@ async function startCamera() {
 
 function detectFace() {
   setInterval(async () => {
-    const detection = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions());
+    const detection = await faceapi
+      .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions())
+      .withFaceLandmarks();
 
     if (detection) {
-      statusText.textContent = 'Face Detected — Studying';
-      if (!isRunning) startTimer();
+      const landmarks = detection.landmarks;
+      const leftEye = landmarks.getLeftEye();
+      const rightEye = landmarks.getRightEye();
+      const nose = landmarks.getNose();
+
+      const eyeDist = Math.abs(rightEye[0].x - leftEye[3].x);
+      const noseCenterX = nose[3].x;
+      const eyeCenterX = (leftEye[3].x + rightEye[0].x) / 2;
+
+      const faceTurn = Math.abs(noseCenterX - eyeCenterX);
+
+      if (faceTurn < 25) {
+        statusText.textContent = 'Focused — Studying';
+        if (!isRunning) startTimer();
+      } else {
+        statusText.textContent = 'Face Turned — Paused';
+        if (isRunning) pauseTimer();
+      }
     } else {
       statusText.textContent = 'No Face — Paused';
       if (isRunning) pauseTimer();
