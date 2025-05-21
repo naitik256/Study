@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Study Stopwatch</title>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css" />
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
   <script defer src="face-api.min.js"></script>
   <script defer src="script.js"></script>
@@ -13,22 +13,21 @@
   <div class="container">
     <h1>Study Stopwatch</h1>
 
-    <div class="summary">
-      <div><strong>Today:</strong> <span id="today">00:00:00</span></div>
-      <div><strong>Total:</strong> <span id="total">00:00:00</span></div>
-    </div>
-
     <div id="stopwatch">00:00:00</div>
 
     <div class="controls">
       <button id="reset">Reset</button>
     </div>
 
-    <canvas id="overlay"></canvas>
     <div id="status">Loading models...</div>
+
+    <div class="report">
+      <h3>Daily Report</h3>
+      <ul id="daily-report"></ul>
+    </div>
   </div>
 
-  <!-- Service Worker (optional) -->
+  <!-- Optional: Service Worker -->
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
