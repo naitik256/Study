@@ -124,6 +124,12 @@ function saveTimes() {
 }
 
 function loadStoredTimes() {
+  const saved = localStorage.getItem(todayKey);
+  if (saved) {
+    todaySeconds = parseInt(saved);
+    elapsedTime = todaySeconds * 1000;
+    updateDisplay();
+  }
   updateDailyReport();
 }
 
