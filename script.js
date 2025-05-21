@@ -5,10 +5,7 @@ video.setAttribute('playsinline', '');
 video.style.display = 'none';
 document.body.appendChild(video);
 
-const overlay = document.getElementById('overlay');
 const statusText = document.getElementById('status');
-const todayDisplay = document.getElementById('today');
-const totalDisplay = document.getElementById('total');
 const stopwatchDisplay = document.getElementById('stopwatch');
 const resetBtn = document.getElementById('reset');
 
@@ -17,7 +14,7 @@ let elapsedTime = 0;
 let timerInterval = null;
 let isRunning = false;
 let todaySeconds = 0;
-let totalSeconds = 0;
+
 const todayKey = new Date().toISOString().slice(0, 10);
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -28,30 +25,28 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 async function loadModels() {
-  statusText.textContent = 'Loading...';
+  statusText.textContent = 'Loading models...';
   await faceapi.nets.tinyFaceDetector.loadFromUri('models');
   await faceapi.nets.faceLandmark68Net.loadFromUri('models');
   statusText.textContent = 'Ready';
 }
 
-function startCamera() {
-  navigator.mediaDevices.getUserMedia({ video: true })
-    .then(stream => {
-      video.srcObject = stream;
-      detectFace();
-    })
-    .catch(err => {
-      console.error(err);
-      statusText.textContent = 'Camera access blocked';
-    });
+async function startCamera() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+    video.srcObject = stream;
+    detectFace();
+  } catch (err) {
+    console.error(err);
+    if (err.name === 'NotAllowedError') {
+      statusText.textContent = 'Camera blocked. Allow it in Safari settings.';
+    } else {
+      statusText.textContent = 'Camera error: ' + err.message;
+    }
+  }
 }
 
 function detectFace() {
-  const canvas = faceapi.createCanvasFromMedia(video);
-  overlay.replaceWith(canvas);
-  canvas.id = 'overlay';
-  faceapi.matchDimensions(canvas, { width: video.width, height: video.height });
-
   setInterval(async () => {
     const detection = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions());
     if (detection) {
@@ -83,19 +78,17 @@ function resetTimer() {
   elapsedTime = 0;
   updateDisplay();
   localStorage.removeItem(todayKey);
+  updateDailyReport();
 }
 
 function updateTime() {
   elapsedTime = Date.now() - startTime;
   todaySeconds = Math.floor(elapsedTime / 1000);
-  totalSeconds = todaySeconds;
   updateDisplay();
 }
 
 function updateDisplay() {
   stopwatchDisplay.textContent = formatTime(todaySeconds);
-  todayDisplay.textContent = formatTime(todaySeconds);
-  totalDisplay.textContent = formatTime(totalSeconds);
 }
 
 function formatTime(sec) {
@@ -107,12 +100,28 @@ function formatTime(sec) {
 
 function saveTimes() {
   localStorage.setItem(todayKey, todaySeconds);
+  updateDailyReport();
 }
 
 function loadStoredTimes() {
-  const saved = localStorage.getItem(todayKey);
-  if (saved) {
-    todaySeconds = parseInt(saved, 10);
-    updateDisplay();
-  }
+  updateDailyReport();
+}
+
+function updateDailyReport() {
+  const report = document.getElementById('daily-report');
+  if (!report) return;
+
+  report.innerHTML = '';
+  const sortedKeys = Object.keys(localStorage)
+    .filter(k => /^\d{4}-\d{2}-\d{2}$/.test(k))
+    .sort()
+    .reverse();
+
+  sortedKeys.forEach(key => {
+    const sec = parseInt(localStorage.getItem(key));
+    const time = formatTime(sec);
+    const li = document.createElement('li');
+    li.textContent = `${key}: ${time}`;
+    report.appendChild(li);
+  });
 }
