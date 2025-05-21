@@ -2,7 +2,7 @@ const video = document.createElement('video');
 video.setAttribute('autoplay', '');
 video.setAttribute('muted', '');
 video.setAttribute('playsinline', '');
-document.body.appendChild(video); // keep video in DOM (can hide via CSS)
+document.body.appendChild(video);
 
 const statusText = document.getElementById('status');
 const stopwatchDisplay = document.getElementById('stopwatch');
@@ -51,12 +51,29 @@ async function startCamera() {
 
 function detectFace() {
   setInterval(async () => {
-    const detection = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions());
+    const detection = await faceapi
+      .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions())
+      .withFaceLandmarks();
+
     if (detection) {
-      statusText.textContent = 'Face Detected';
-      if (!isRunning) startTimer();
+      const landmarks = detection.landmarks;
+      const nose = landmarks.getNose();
+      const leftEye = landmarks.getLeftEye();
+      const rightEye = landmarks.getRightEye();
+
+      const noseY = nose[3].y;
+      const eyeY = (leftEye[0].y + rightEye[3].y) / 2;
+      const tilt = noseY - eyeY;
+
+      if (tilt < 40) {
+        statusText.textContent = 'Face Upright — Studying';
+        if (!isRunning) startTimer();
+      } else {
+        statusText.textContent = 'Head Down — Paused';
+        if (isRunning) pauseTimer();
+      }
     } else {
-      statusText.textContent = 'No Face';
+      statusText.textContent = 'No Face — Paused';
       if (isRunning) pauseTimer();
     }
   }, 1000);
