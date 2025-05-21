@@ -1,176 +1,127 @@
-const videoInput = document.getElementById('videoInput');
-const overlayCanvas = document.getElementById('overlayCanvas');
-const stopwatchDisplay = document.getElementById('stopwatch-display');
-const statusIndicator = document.getElementById('status-indicator');
-const container = document.querySelector('.container');
-
-let faceDetectionInitialized = false;
-let mediaStream = null;
+const video = document.getElementById('video');
+const overlay = document.getElementById('overlay');
+const startBtn = document.getElementById('start');
+const resetBtn = document.getElementById('reset');
+const statusText = document.getElementById('status');
+const todayDisplay = document.getElementById('today');
+const totalDisplay = document.getElementById('total');
+const stopwatchDisplay = document.getElementById('stopwatch');
 
 let startTime = 0;
 let elapsedTime = 0;
 let timerInterval = null;
 let isRunning = false;
-let isPausedByDetection = true;
-
 let isPersonPresent = false;
-let isStudying = false;
 
-function formatTime(ms) {
-    const totalSeconds = Math.floor(ms / 1000);
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = totalSeconds % 60;
-    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+const todayKey = new Date().toISOString().slice(0, 10);
+let totalSeconds = 0;
+let todaySeconds = 0;
+
+document.addEventListener('DOMContentLoaded', async () => {
+  loadStoredTimes();
+  await loadModels();
+  startCamera();
+});
+
+async function loadModels() {
+  statusText.textContent = 'Loading models...';
+  await faceapi.nets.tinyFaceDetector.loadFromUri('models');
+  await faceapi.nets.faceLandmark68Net.loadFromUri('models');
+  statusText.textContent = 'Models loaded';
 }
 
-function updateStopwatchDisplay() {
-    const currentTime = Date.now();
-    const totalElapsed = elapsedTime + (isRunning ? (currentTime - startTime) : 0);
-    stopwatchDisplay.textContent = formatTime(totalElapsed);
+function startCamera() {
+  navigator.mediaDevices.getUserMedia({ video: {} })
+    .then(stream => {
+      video.srcObject = stream;
+      video.play();
+      detectFaces();
+    })
+    .catch(err => {
+      console.error('Camera access error:', err);
+      statusText.textContent = 'Camera error';
+    });
 }
 
-function startStopwatch() {
-    if (isRunning) return;
+function detectFaces() {
+  const displaySize = { width: video.width, height: video.height };
+  const canvas = faceapi.createCanvasFromMedia(video);
+  overlay.replaceWith(canvas);
+  canvas.id = 'overlay';
 
-    if (isNaN(elapsedTime) || elapsedTime < 0 || elapsedTime > 1e9 * 60) {
-        elapsedTime = 0;
-    }
+  faceapi.matchDimensions(canvas, displaySize);
 
-    isRunning = true;
-    startTime = Date.now();
-    timerInterval = setInterval(updateStopwatchDisplay, 1000);
-    console.log("Stopwatch resumed from:", formatTime(elapsedTime));
-}
-
-function pauseStopwatch() {
-    if (!isRunning) return;
-
-    isRunning = false;
-    clearInterval(timerInterval);
-    elapsedTime += Date.now() - startTime;
-    startTime = 0;
-    console.log("Stopwatch paused at:", formatTime(elapsedTime));
-}
-
-function setStatus(text, className) {
-    statusIndicator.textContent = text;
-    statusIndicator.className = 'status-indicator ' + className;
-}
-
-async function onPlay() {
-    if (!faceDetectionInitialized) {
-        requestAnimationFrame(onPlay);
-        return;
-    }
-
-    if (videoInput.paused || videoInput.ended) {
-        setStatus("Video Paused/Ended", "paused");
-        isPersonPresent = false;
-        isStudying = false;
-        requestAnimationFrame(onPlay);
-        return;
-    }
-
-    const displaySize = { width: videoInput.width, height: videoInput.height };
-    faceapi.matchDimensions(overlayCanvas, displaySize);
-
-    const detections = await faceapi
-        .detectSingleFace(videoInput, new faceapi.TinyFaceDetectorOptions());
-
-    isPersonPresent = !!detections;
-    isStudying = isPersonPresent;
-
-    const ctx = overlayCanvas.getContext('2d');
-    ctx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
-
+  setInterval(async () => {
+    const detections = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions());
     if (detections) {
-        const resizedDetections = faceapi.resizeResults(detections, displaySize);
-        faceapi.draw.drawDetections(overlayCanvas, resizedDetections);
-        // faceapi.draw.drawFaceLandmarks(overlayCanvas, resizedDetections); // Not needed
-    }
-
-    if (isStudying) {
-        setStatus("Studying...", "studying");
-        if (isPausedByDetection) {
-            startStopwatch();
-            isPausedByDetection = false;
-        }
+      statusText.textContent = 'Face Detected';
+      isPersonPresent = true;
+      if (!isRunning) startTimer();
     } else {
-        setStatus("Not Studying", "distracted");
-        if (isRunning) {
-            pauseStopwatch();
-            isPausedByDetection = true;
-        }
+      statusText.textContent = 'No Face';
+      isPersonPresent = false;
+      if (isRunning) pauseTimer();
     }
-
-    requestAnimationFrame(onPlay);
+  }, 1000);
 }
 
-async function initializeFaceDetection() {
-    setStatus("Loading models...", "loading");
-    try {
-        const modelPath = 'models';
-
-        await faceapi.nets.tinyFaceDetector.loadFromUri(modelPath);
-        faceDetectionInitialized = true;
-        setStatus("Ready. Grant camera access.", "ready");
-        await setupCamera();
-    } catch (error) {
-        console.error("Model loading error:", error);
-        setStatus("Error loading models!", "camera-error");
-    }
+function startTimer() {
+  if (!isRunning) {
+    startTime = Date.now() - elapsedTime;
+    timerInterval = setInterval(updateTime, 1000);
+    isRunning = true;
+  }
 }
 
-async function setupCamera() {
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        setStatus("Camera not supported", "camera-error");
-        return;
-    }
-
-    setStatus("Requesting camera access...", "loading");
-
-    try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        mediaStream = stream;
-        videoInput.srcObject = stream;
-
-        videoInput.addEventListener('play', onPlay);
-
-        videoInput.addEventListener('loadedmetadata', () => {
-            // ✅ MOBILE FIX: Wait for actual video size
-            let checkReady = setInterval(() => {
-                if (videoInput.videoWidth && videoInput.videoHeight) {
-                    clearInterval(checkReady);
-
-                    const videoWidth = videoInput.videoWidth;
-                    const videoHeight = videoInput.videoHeight;
-
-                    videoInput.width = videoWidth;
-                    videoInput.height = videoHeight;
-
-                    container.style.width = `${videoWidth}px`;
-                    videoInput.style.width = '100%';
-                    overlayCanvas.style.width = '100%';
-
-                    setStatus("Camera Ready", "ready");
-                }
-            }, 100); // check every 100ms
-        });
-    } catch (error) {
-        console.error("Camera access error:", error);
-        setStatus("Camera error", "camera-error");
-        if (isRunning) {
-            pauseStopwatch();
-            isPausedByDetection = true;
-        }
-    }
+function pauseTimer() {
+  if (isRunning) {
+    clearInterval(timerInterval);
+    timerInterval = null;
+    isRunning = false;
+    saveTimes();
+  }
 }
 
-// ✅ Initial Reset
-elapsedTime = 0;
-startTime = 0;
-isRunning = false;
-isPausedByDetection = true;
-updateStopwatchDisplay();
-initializeFaceDetection();
+function resetTimer() {
+  pauseTimer();
+  elapsedTime = 0;
+  todaySeconds = 0;
+  updateDisplay();
+  localStorage.removeItem(todayKey);
+}
+
+function updateTime() {
+  elapsedTime = Date.now() - startTime;
+  const seconds = Math.floor(elapsedTime / 1000);
+  todaySeconds = seconds;
+  totalSeconds = seconds; // Adjust if storing lifetime data separately
+  updateDisplay();
+}
+
+function updateDisplay() {
+  stopwatchDisplay.textContent = formatTime(todaySeconds);
+  todayDisplay.textContent = formatTime(todaySeconds);
+  totalDisplay.textContent = formatTime(totalSeconds);
+}
+
+function formatTime(sec) {
+  const hrs = String(Math.floor(sec / 3600)).padStart(2, '0');
+  const mins = String(Math.floor((sec % 3600) / 60)).padStart(2, '0');
+  const secs = String(sec % 60).padStart(2, '0');
+  return `${hrs}:${mins}:${secs}`;
+}
+
+function saveTimes() {
+  localStorage.setItem(todayKey, todaySeconds);
+}
+
+function loadStoredTimes() {
+  const saved = localStorage.getItem(todayKey);
+  if (saved) {
+    todaySeconds = parseInt(saved, 10);
+    updateDisplay();
+  }
+}
+
+startBtn.addEventListener('click', startTimer);
+resetBtn.addEventListener('click', resetTimer);
