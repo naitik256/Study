@@ -26,7 +26,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 async function loadModels() {
   statusText.textContent = 'Loading models...';
   await faceapi.nets.tinyFaceDetector.loadFromUri('models');
-  await faceapi.nets.faceLandmark68Net.loadFromUri('models');
   statusText.textContent = 'Ready';
 }
 
@@ -51,27 +50,11 @@ async function startCamera() {
 
 function detectFace() {
   setInterval(async () => {
-    const detection = await faceapi
-      .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions())
-      .withFaceLandmarks();
+    const detection = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions());
 
     if (detection) {
-      const landmarks = detection.landmarks;
-      const nose = landmarks.getNose();
-      const leftEye = landmarks.getLeftEye();
-      const rightEye = landmarks.getRightEye();
-
-      const noseY = nose[3].y;
-      const eyeY = (leftEye[0].y + rightEye[3].y) / 2;
-      const tilt = noseY - eyeY;
-
-      if (tilt < 40) {
-        statusText.textContent = 'Face Upright — Studying';
-        if (!isRunning) startTimer();
-      } else {
-        statusText.textContent = 'Head Down — Paused';
-        if (isRunning) pauseTimer();
-      }
+      statusText.textContent = 'Face Detected — Studying';
+      if (!isRunning) startTimer();
     } else {
       statusText.textContent = 'No Face — Paused';
       if (isRunning) pauseTimer();
