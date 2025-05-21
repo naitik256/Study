@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Study Stopwatch</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script defer src="face-api.min.js"></script>
+    <script defer src="script.js"></script>
+    <!-- Google AdSense -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=YOUR_ADSENSE_CLIENT_ID" crossorigin="anonymous"></script>
+
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Study Stopwatch</h1>
+            <div class="study-summary">
+                <div class="summary-item">
+                    <span class="label">Today:</span> <span id="today-study-time">00:00:00</span>
+                </div>
+                <div class="summary-item">
+                    <span class="label">Total:</span> <span id="total-study-time">00:00:00</span>
+                </div>
+            </div>
+        </div>
+        <div class="video-container">
+            <video id="video" autoplay muted playsinline></video>
+        </div>
+        <div id="stopwatch-container">
+            <div id="stopwatch">00:00:00</div>
+        </div>
+        <div class="controls">
+            <button id="startStop">Start</button>
+            <button id="reset">Reset</button>
+        </div>
+
+        <canvas id="overlay"></canvas>
+        <div id="status">Ready</div>
+        <canvas id="study-chart"></canvas>
+
+        <div id="ad-slot-1" class="ad-slot"></div>
+        <div id="ad-slot-2" class="ad-slot"></div>
+    </div>
+</body>
+</html>
