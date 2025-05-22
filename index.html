@@ -3,70 +3,82 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Study Stopwatch</title>
-  <meta name="description" content="A face detection based study timer that tracks your focus time and rewards XP. Achieve your exam goals with motivation!" />
+  <title>Study Stopwatch – Face Detection Study Timer</title>
+
+  <!-- SEO Meta Tags -->
+  <meta name="description" content="Track your study time automatically using face detection. Timer runs only when you're focused. No login. No data shared." />
+  <meta name="keywords" content="study timer, face detection stopwatch, auto study tracker, productivity, student focus timer" />
+  <meta name="author" content="Naitik Raj" />
+
+  <!-- Social Media Meta Tags -->
+  <meta property="og:title" content="Study Stopwatch – Face-Based Study Timer" />
+  <meta property="og:description" content="Track your study time smartly using face detection. Built for students." />
+  <meta property="og:image" content="https://naitik256.github.io/Study/thumbnail.png" />
+  <meta property="og:url" content="https://naitik256.github.io/Study" />
+  <meta name="twitter:card" content="summary_large_image" />
+
+  <!-- Favicon -->
+  <link rel="icon" href="favicon.ico" type="image/x-icon" />
+
+  <!-- Structured Data -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "Study Stopwatch",
+    "url": "https://naitik256.github.io/Study",
+    "description": "A face detection-based stopwatch that tracks your study time automatically.",
+    "applicationCategory": "EducationApplication",
+    "operatingSystem": "All",
+    "creator": {
+      "@type": "Person",
+      "name": "Naitik Raj"
+    }
+  }
+  </script>
+
+  <!-- Styles & Scripts -->
   <link rel="stylesheet" href="styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
   <script defer src="face-api.min.js"></script>
   <script defer src="script.js"></script>
 </head>
+
 <body>
-
-  <!-- XP & Level at top -->
-  <div class="xp-top">
-    <span id="xp">XP: 0</span>
-    <span id="level">Level: 1</span>
-  </div>
-
-  <!-- Main App Container -->
   <div class="container">
     <h1>Study Stopwatch</h1>
-    <div id="stopwatch">00:00:00</div>
-    <button id="reset">Reset</button>
-    <div id="status">Loading...</div>
 
-    <!-- Exam Goal Progress -->
-    <div class="goal-section">
-      <label for="goalInput">Set Goal (min 8 hrs):</label>
-      <input type="number" id="goalInput" min="8" value="8">
-      <div class="progress-container">
-        <div id="goalProgress"></div>
-      </div>
-      <div id="goalText">0h 0m / 8h</div>
+    <div id="stopwatch">00:00:00</div>
+
+    <div class="controls">
+      <button id="reset">Reset</button>
     </div>
 
-    <!-- Daily Report -->
+    <div id="status">Loading models...</div>
+
     <div class="report">
       <h3>Daily Report</h3>
       <ul id="daily-report"></ul>
     </div>
-
-    <!-- XP Breakdown -->
-    <div class="xp-breakdown">
-      <h3>XP Earned Today</h3>
-      <ul id="xp-breakdown-list"></ul>
-    </div>
   </div>
 
-  <!-- Footer -->
   <footer>
     <p>
       <a href="#about">About</a> |
-      <a href="#privacy">Privacy Policy</a> |
+      <a href="#privacy">Privacy</a> |
       <a href="mailto:rajnaitik620@gmail.com">Contact</a> |
       <a href="https://www.instagram.com/itz_raj_0990_?igsh=bTl6NmgzOGI3OWQy" target="_blank">Instagram</a>
     </p>
   </footer>
 
-  <!-- Info Sections -->
   <div id="about" class="info-section">
     <h3>About</h3>
-    <p>This app helps students focus by tracking time using face detection and motivating them through XP and progress toward study goals.</p>
+    <p>This app helps you stay focused by tracking study time using face detection. The timer starts automatically when you're visible and pauses when you're not. No login required.</p>
   </div>
 
   <div id="privacy" class="info-section">
     <h3>Privacy Policy</h3>
-    <p>This app runs fully in your browser. Your camera is used only to detect presence and nothing is recorded or sent. All data is stored locally.</p>
+    <p>This app uses your camera locally to detect your presence. No photos or personal data are recorded or sent anywhere. Your study time is stored securely in your browser only.</p>
   </div>
-
 </body>
 </html>
