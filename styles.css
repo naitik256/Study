@@ -7,10 +7,10 @@ body {
   background-color: #111;
   color: #fff;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
   align-items: center;
-  min-height: 100vh;
   margin: 0;
+  padding: 0;
 }
 
 .container {
@@ -21,6 +21,7 @@ body {
   text-align: center;
   width: 90%;
   max-width: 400px;
+  margin-top: 40px;
 }
 
 h1 {
@@ -74,10 +75,30 @@ h1 {
   border-bottom: 1px solid #333;
 }
 
-video {
-  display: none;
+/* Footer & Info Sections */
+footer {
+  margin-top: 60px;
+  text-align: center;
+  font-size: 0.9em;
+  color: #888;
 }
 
-#overlay {
-  display: none;
+footer a {
+  color: #00cec9;
+  text-decoration: none;
+  margin: 0 10px;
+}
+
+footer a:hover {
+  text-decoration: underline;
+}
+
+.info-section {
+  margin: 40px auto;
+  max-width: 500px;
+  font-size: 0.95em;
+  line-height: 1.5;
+  color: #ccc;
+  text-align: left;
+  padding: 0 20px;
 }
