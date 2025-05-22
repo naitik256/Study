@@ -1,157 +1,116 @@
-const video = document.createElement('video');
-video.setAttribute('autoplay', '');
-video.setAttribute('muted', '');
-video.setAttribute('playsinline', '');
-document.body.appendChild(video);
-
-const statusText = document.getElementById('status');
-const stopwatchDisplay = document.getElementById('stopwatch');
-const resetBtn = document.getElementById('reset');
-
-let startTime = 0;
-let elapsedTime = 0;
-let timerInterval = null;
-let isRunning = false;
 let todaySeconds = 0;
-let wakeLock = null;
+let xp = 0;
+let level = 1;
+let goalHours = 8;
+let goalSeconds = 28800;
 
 const todayKey = new Date().toISOString().slice(0, 10);
+const xpKey = 'xp';
+const levelKey = 'level';
+const goalKey = 'goal';
 
-document.addEventListener('DOMContentLoaded', async () => {
-  await requestWakeLock(); // Wake Lock starts
-  loadStoredTimes();
-  await loadModels();
-  startCamera();
-  resetBtn.addEventListener('click', resetTimer);
+document.addEventListener('DOMContentLoaded', () => {
+  loadStoredData();
+  updateXPDisplay();
+  document.getElementById('reset').addEventListener('click', resetTimer);
+  document.getElementById('goalInput').addEventListener('change', setGoal);
+  startTracking();
 });
 
-async function requestWakeLock() {
-  try {
-    if ('wakeLock' in navigator) {
-      wakeLock = await navigator.wakeLock.request('screen');
-      console.log('Wake Lock is active');
-    }
-  } catch (err) {
-    console.error(`Wake Lock failed: ${err.name}, ${err.message}`);
-  }
-
-  document.addEventListener('visibilitychange', async () => {
-    if (wakeLock !== null && document.visibilityState === 'visible') {
-      await requestWakeLock(); // Reacquire on visibility return
-    }
-  });
-}
-
-async function loadModels() {
-  statusText.textContent = 'Loading models...';
-  await faceapi.nets.tinyFaceDetector.loadFromUri('models');
-  await faceapi.nets.faceLandmark68Net.loadFromUri('models');
-  statusText.textContent = 'Ready';
-}
-
-async function startCamera() {
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-    video.srcObject = stream;
-
-    video.onloadedmetadata = () => {
-      video.play();
-      detectFace();
-    };
-  } catch (err) {
-    console.error(err);
-    if (err.name === 'NotAllowedError') {
-      statusText.textContent = 'Camera blocked. Allow it in Safari settings.';
-    } else {
-      statusText.textContent = 'Camera error: ' + err.message;
-    }
-  }
-}
-
-function detectFace() {
-  setInterval(async () => {
-    const detection = await faceapi
-      .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions());
-
-    if (detection) {
-      statusText.textContent = 'Face Detected — Studying';
-      if (!isRunning) startTimer();
-    } else {
-      statusText.textContent = 'No Face — Paused';
-      if (isRunning) pauseTimer();
-    }
+function startTracking() {
+  setInterval(() => {
+    todaySeconds++;
+    updateStopwatch();
+    updateXP();
+    updateGoalProgress();
   }, 1000);
 }
 
-function startTimer() {
-  startTime = Date.now() - elapsedTime;
-  timerInterval = setInterval(updateTime, 1000);
-  isRunning = true;
-}
-
-function pauseTimer() {
-  clearInterval(timerInterval);
-  timerInterval = null;
-  isRunning = false;
-  saveTimes();
-}
-
 function resetTimer() {
-  pauseTimer();
   todaySeconds = 0;
-  elapsedTime = 0;
-  updateDisplay();
-  localStorage.removeItem(todayKey);
-  updateDailyReport();
+  updateStopwatch();
+  updateGoalProgress();
+  updateXPBreakdown();
 }
 
-function updateTime() {
-  elapsedTime = Date.now() - startTime;
-  todaySeconds = Math.floor(elapsedTime / 1000);
-  updateDisplay();
-}
-
-function updateDisplay() {
-  stopwatchDisplay.textContent = formatTime(todaySeconds);
-}
-
-function formatTime(sec) {
-  const hrs = String(Math.floor(sec / 3600)).padStart(2, '0');
-  const mins = String(Math.floor((sec % 3600) / 60)).padStart(2, '0');
-  const secs = String(sec % 60).padStart(2, '0');
-  return `${hrs}:${mins}:${secs}`;
-}
-
-function saveTimes() {
+function updateStopwatch() {
+  const hrs = String(Math.floor(todaySeconds / 3600)).padStart(2, '0');
+  const mins = String(Math.floor((todaySeconds % 3600) / 60)).padStart(2, '0');
+  const secs = String(todaySeconds % 60).padStart(2, '0');
+  document.getElementById('stopwatch').textContent = `${hrs}:${mins}:${secs}`;
   localStorage.setItem(todayKey, todaySeconds);
   updateDailyReport();
 }
 
-function loadStoredTimes() {
-  const saved = localStorage.getItem(todayKey);
-  if (saved) {
-    todaySeconds = parseInt(saved);
-    elapsedTime = todaySeconds * 1000;
-    updateDisplay();
+function updateXP() {
+  xp++;
+  level = Math.floor(Math.sqrt(xp / 10)) + 1;
+  localStorage.setItem(xpKey, xp);
+  localStorage.setItem(levelKey, level);
+  updateXPDisplay();
+  updateXPBreakdown();
+}
+
+function updateXPDisplay() {
+  document.getElementById('xp').textContent = 'XP = ' + xp;
+  document.getElementById('level').textContent = 'Level = ' + level;
+}
+
+function setGoal() {
+  let input = parseInt(document.getElementById('goalInput').value);
+  if (input >= 8) {
+    goalHours = input;
+    goalSeconds = goalHours * 3600;
+    localStorage.setItem(goalKey, goalHours);
+  } else {
+    document.getElementById('goalInput').value = 8;
   }
+}
+
+function updateGoalProgress() {
+  const percent = Math.min(100, (todaySeconds / goalSeconds) * 100);
+  document.getElementById('goalProgress').style.width = percent + '%';
+  document.getElementById('goalStatus').textContent = `Progress: ${formatTime(todaySeconds)} / ${goalHours}h`;
+  if (todaySeconds >= goalSeconds) {
+    alert('You did it! Exam Goal Completed!');
+  }
+}
+
+function formatTime(sec) {
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  return `${h}h ${m}m`;
+}
+
+function loadStoredData() {
+  todaySeconds = parseInt(localStorage.getItem(todayKey)) || 0;
+  xp = parseInt(localStorage.getItem(xpKey)) || 0;
+  level = parseInt(localStorage.getItem(levelKey)) || 1;
+  goalHours = parseInt(localStorage.getItem(goalKey)) || 8;
+  goalSeconds = goalHours * 3600;
+  document.getElementById('goalInput').value = goalHours;
+  updateStopwatch();
+  updateXPDisplay();
+  updateGoalProgress();
   updateDailyReport();
+  updateXPBreakdown();
 }
 
 function updateDailyReport() {
-  const report = document.getElementById('daily-report');
-  if (!report) return;
-
-  report.innerHTML = '';
-  const sortedKeys = Object.keys(localStorage)
-    .filter(k => /^\d{4}-\d{2}-\d{2}$/.test(k))
-    .sort()
-    .reverse();
-
-  sortedKeys.forEach(key => {
-    const sec = parseInt(localStorage.getItem(key));
-    const time = formatTime(sec);
-    const li = document.createElement('li');
-    li.textContent = `${key}: ${time}`;
-    report.appendChild(li);
+  const list = document.getElementById('daily-report');
+  list.innerHTML = '';
+  Object.keys(localStorage).forEach(key => {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(key)) {
+      const time = formatTime(parseInt(localStorage.getItem(key)));
+      const li = document.createElement('li');
+      li.textContent = `${key}: ${time}`;
+      list.appendChild(li);
+    }
   });
+}
+
+function updateXPBreakdown() {
+  const list = document.getElementById('xp-breakdown-list');
+  list.innerHTML = '';
+  list.innerHTML += `<li>${todaySeconds} seconds studied = ${xp} XP</li>`;
 }
