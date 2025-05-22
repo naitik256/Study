@@ -4,61 +4,42 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Study Stopwatch – Face Detection Study Timer</title>
-
-  <!-- SEO Meta Tags -->
-  <meta name="description" content="Track your study time automatically using face detection. Timer runs only when you're focused. No login. No data shared." />
-  <meta name="keywords" content="study timer, face detection stopwatch, auto study tracker, productivity, student focus timer" />
+  <meta name="description" content="Track your study time automatically using face detection. Earn XP, complete your exam goal, and stay focused!" />
+  <meta name="keywords" content="study timer, face detection, stopwatch, XP system, exam goal tracker, productivity" />
   <meta name="author" content="Naitik Raj" />
-
-  <!-- Social Media Meta Tags -->
-  <meta property="og:title" content="Study Stopwatch – Face-Based Study Timer" />
-  <meta property="og:description" content="Track your study time smartly using face detection. Built for students." />
-  <meta property="og:image" content="https://naitik256.github.io/Study/thumbnail.png" />
-  <meta property="og:url" content="https://naitik256.github.io/Study" />
-  <meta name="twitter:card" content="summary_large_image" />
-
-  <!-- Favicon -->
-  <link rel="icon" href="favicon.ico" type="image/x-icon" />
-
-  <!-- Structured Data -->
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "WebApplication",
-    "name": "Study Stopwatch",
-    "url": "https://naitik256.github.io/Study",
-    "description": "A face detection-based stopwatch that tracks your study time automatically.",
-    "applicationCategory": "EducationApplication",
-    "operatingSystem": "All",
-    "creator": {
-      "@type": "Person",
-      "name": "Naitik Raj"
-    }
-  }
-  </script>
-
-  <!-- Styles & Scripts -->
   <link rel="stylesheet" href="styles.css" />
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
   <script defer src="face-api.min.js"></script>
   <script defer src="script.js"></script>
 </head>
-
 <body>
+  <div class="xp-header">
+    <div id="xp">XP = 0</div>
+    <div id="level">Level = 1</div>
+  </div>
+
   <div class="container">
     <h1>Study Stopwatch</h1>
-
     <div id="stopwatch">00:00:00</div>
-
     <div class="controls">
       <button id="reset">Reset</button>
     </div>
-
     <div id="status">Loading models...</div>
+
+    <div class="goal-section">
+      <label for="goalInput">Exam Goal (hrs):</label>
+      <input type="number" id="goalInput" min="8" value="8">
+      <div id="goalProgressBar"><div id="goalProgress"></div></div>
+      <div id="goalStatus"></div>
+    </div>
 
     <div class="report">
       <h3>Daily Report</h3>
       <ul id="daily-report"></ul>
+    </div>
+
+    <div class="xp-breakdown">
+      <h3>XP Earned Today</h3>
+      <ul id="xp-breakdown-list"></ul>
     </div>
   </div>
 
@@ -73,12 +54,12 @@
 
   <div id="about" class="info-section">
     <h3>About</h3>
-    <p>This app helps you stay focused by tracking study time using face detection. The timer starts automatically when you're visible and pauses when you're not. No login required.</p>
+    <p>This app tracks your study time using face detection and helps you stay consistent by earning XP and completing daily/exam goals. Perfect for focused learners!</p>
   </div>
 
   <div id="privacy" class="info-section">
     <h3>Privacy Policy</h3>
-    <p>This app uses your camera locally to detect your presence. No photos or personal data are recorded or sent anywhere. Your study time is stored securely in your browser only.</p>
+    <p>This app uses your camera locally in the browser to detect your face. No data is recorded or sent. All information stays in your browser's localStorage.</p>
   </div>
 </body>
 </html>
