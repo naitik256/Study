@@ -13,15 +13,34 @@ let elapsedTime = 0;
 let timerInterval = null;
 let isRunning = false;
 let todaySeconds = 0;
+let wakeLock = null;
 
 const todayKey = new Date().toISOString().slice(0, 10);
 
 document.addEventListener('DOMContentLoaded', async () => {
+  await requestWakeLock(); // Wake Lock starts
   loadStoredTimes();
   await loadModels();
   startCamera();
   resetBtn.addEventListener('click', resetTimer);
 });
+
+async function requestWakeLock() {
+  try {
+    if ('wakeLock' in navigator) {
+      wakeLock = await navigator.wakeLock.request('screen');
+      console.log('Wake Lock is active');
+    }
+  } catch (err) {
+    console.error(`Wake Lock failed: ${err.name}, ${err.message}`);
+  }
+
+  document.addEventListener('visibilitychange', async () => {
+    if (wakeLock !== null && document.visibilityState === 'visible') {
+      await requestWakeLock(); // Reacquire on visibility return
+    }
+  });
+}
 
 async function loadModels() {
   statusText.textContent = 'Loading models...';
@@ -52,28 +71,11 @@ async function startCamera() {
 function detectFace() {
   setInterval(async () => {
     const detection = await faceapi
-      .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions())
-      .withFaceLandmarks();
+      .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions());
 
     if (detection) {
-      const landmarks = detection.landmarks;
-      const leftEye = landmarks.getLeftEye();
-      const rightEye = landmarks.getRightEye();
-      const nose = landmarks.getNose();
-
-      const eyeDist = Math.abs(rightEye[0].x - leftEye[3].x);
-      const noseCenterX = nose[3].x;
-      const eyeCenterX = (leftEye[3].x + rightEye[0].x) / 2;
-
-      const faceTurn = Math.abs(noseCenterX - eyeCenterX);
-
-      if (faceTurn < 25) {
-        statusText.textContent = 'Focused — Studying';
-        if (!isRunning) startTimer();
-      } else {
-        statusText.textContent = 'Face Turned — Paused';
-        if (isRunning) pauseTimer();
-      }
+      statusText.textContent = 'Face Detected — Studying';
+      if (!isRunning) startTimer();
     } else {
       statusText.textContent = 'No Face — Paused';
       if (isRunning) pauseTimer();
