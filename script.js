@@ -60,34 +60,24 @@ async function startCamera() {
     };
   } catch (err) {
     console.error(err);
-    statusText.textContent = 'Camera error: ' + err.message;
+    if (err.name === 'NotAllowedError') {
+      statusText.textContent = 'Camera blocked. Allow it in Safari settings.';
+    } else {
+      statusText.textContent = 'Camera error: ' + err.message;
+    }
   }
 }
 
 function detectFace() {
   setInterval(async () => {
     const detection = await faceapi
-      .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions())
-      .withFaceLandmarks();
+      .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions());
 
     if (detection) {
-      const nose = detection.landmarks.getNose();
-      const leftEye = detection.landmarks.getLeftEye();
-
-      const noseY = nose[3].y;
-      const eyeY = leftEye[3].y;
-
-      const headIsDown = noseY > eyeY + 10;
-
-      if (headIsDown) {
-        statusText.textContent = 'Studying (Head Down)';
-        if (!isRunning) startTimer();
-      } else {
-        statusText.textContent = 'Face Up — Timer Paused';
-        if (isRunning) pauseTimer();
-      }
+      statusText.textContent = 'Face Detected — Studying';
+      if (!isRunning) startTimer();
     } else {
-      statusText.textContent = 'No Face Detected — Paused';
+      statusText.textContent = 'No Face — Paused';
       if (isRunning) pauseTimer();
     }
   }, 1000);
