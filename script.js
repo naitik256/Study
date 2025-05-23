@@ -65,7 +65,7 @@ function detectFace() {
       .withFaceLandmarks();
 
     if (detection) {
-      statusText.textContent = 'Face Detected — Studying';
+      statusText.textContent = 'Face Detected â Studying';
       if (!isRunning) startTimer();
     } else {
       // Fallback: Check if top head/hair region is visible
@@ -87,10 +87,10 @@ function detectFace() {
       const darkRatio = darkPixelCount / (topStrip.length / 4);
 
       if (darkRatio > 0.15) {
-        statusText.textContent = 'Head Down — Writing Mode';
+        statusText.textContent = 'Head Down â Writing Mode';
         if (!isRunning) startTimer();
       } else {
-        statusText.textContent = 'No Face — Paused';
+        statusText.textContent = 'No Face â Paused';
         if (isRunning) pauseTimer();
       }
     }
