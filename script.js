@@ -7,6 +7,7 @@ document.body.appendChild(video);
 const statusText = document.getElementById('status');
 const stopwatchDisplay = document.getElementById('stopwatch');
 const resetBtn = document.getElementById('reset');
+const reportList = document.getElementById('daily-report');
 
 let startTime = 0;
 let elapsedTime = 0;
@@ -170,18 +171,17 @@ function loadStoredTimes() {
 }
 
 function updateDailyReport() {
-  const report = document.getElementById('daily-report');
-  if (!report) return;
-  report.innerHTML = '';
+  if (!reportList) return;
+  reportList.innerHTML = '';
   const sortedKeys = Object.keys(localStorage)
     .filter(k => /^\\d{4}-\\d{2}-\\d{2}$/.test(k))
     .sort()
     .reverse();
+
   sortedKeys.forEach(key => {
     const sec = parseInt(localStorage.getItem(key));
-    const time = formatTime(sec);
     const li = document.createElement('li');
-    li.textContent = `${key}: ${time}`;
-    report.appendChild(li);
+    li.textContent = `${key}: ${formatTime(sec)}`;
+    reportList.appendChild(li);
   });
 }
