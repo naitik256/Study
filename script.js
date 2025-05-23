@@ -1,3 +1,4 @@
+// --- Initialization ---
 const video = document.createElement('video');
 video.setAttribute('autoplay', '');
 video.setAttribute('muted', '');
@@ -14,9 +15,9 @@ let timerInterval = null;
 let isRunning = false;
 let todaySeconds = 0;
 let wakeLock = null;
-
 const todayKey = new Date().toISOString().slice(0, 10);
 
+// --- DOM Loaded ---
 document.addEventListener('DOMContentLoaded', async () => {
   await requestWakeLock();
   loadStoredTimes();
@@ -25,12 +26,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   resetBtn.addEventListener('click', resetTimer);
 });
 
+// --- Wake Lock ---
 async function requestWakeLock() {
   try {
     if ('wakeLock' in navigator) {
       wakeLock = await navigator.wakeLock.request('screen');
     }
-  } catch (err) {}
+  } catch (err) {
+    console.error(`Wake Lock failed: ${err.name}, ${err.message}`);
+  }
+
   document.addEventListener('visibilitychange', async () => {
     if (wakeLock !== null && document.visibilityState === 'visible') {
       await requestWakeLock();
@@ -38,6 +43,7 @@ async function requestWakeLock() {
   });
 }
 
+// --- Load face-api.js Models ---
 async function loadModels() {
   statusText.textContent = 'Loading models...';
   await faceapi.nets.tinyFaceDetector.loadFromUri('models');
@@ -45,6 +51,7 @@ async function loadModels() {
   statusText.textContent = 'Ready';
 }
 
+// --- Start Camera ---
 async function startCamera() {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ video: true });
@@ -54,49 +61,30 @@ async function startCamera() {
       detectFace();
     };
   } catch (err) {
-    statusText.textContent = 'Camera error: ' + err.message;
+    console.error(err);
+    statusText.textContent = err.name === 'NotAllowedError'
+      ? 'Camera blocked. Allow it in Safari settings.'
+      : 'Camera error: ' + err.message;
   }
 }
 
+// --- Face Detection ---
 function detectFace() {
   setInterval(async () => {
     const detection = await faceapi
-      .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions())
-      .withFaceLandmarks();
+      .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions());
 
     if (detection) {
-      statusText.textContent = 'Face Detected â Studying';
+      statusText.textContent = 'Face Detected — Studying';
       if (!isRunning) startTimer();
     } else {
-      // Fallback: Check if top head/hair region is visible
-      const canvas = document.createElement('canvas');
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-      const topStrip = ctx.getImageData(0, 0, canvas.width, canvas.height * 0.15).data;
-      let darkPixelCount = 0;
-      for (let i = 0; i < topStrip.length; i += 4) {
-        const r = topStrip[i];
-        const g = topStrip[i + 1];
-        const b = topStrip[i + 2];
-        const brightness = (r + g + b) / 3;
-        if (brightness < 60) darkPixelCount++;
-      }
-      const darkRatio = darkPixelCount / (topStrip.length / 4);
-
-      if (darkRatio > 0.15) {
-        statusText.textContent = 'Head Down â Writing Mode';
-        if (!isRunning) startTimer();
-      } else {
-        statusText.textContent = 'No Face â Paused';
-        if (isRunning) pauseTimer();
-      }
+      statusText.textContent = 'No Face — Paused';
+      if (isRunning) pauseTimer();
     }
   }, 1000);
 }
 
+// --- Timer Functions ---
 function startTimer() {
   startTime = Date.now() - elapsedTime;
   timerInterval = setInterval(updateTime, 1000);
@@ -136,6 +124,7 @@ function formatTime(sec) {
   return `${hrs}:${mins}:${secs}`;
 }
 
+// --- Storage ---
 function saveTimes() {
   localStorage.setItem(todayKey, todaySeconds);
   updateDailyReport();
@@ -151,14 +140,17 @@ function loadStoredTimes() {
   updateDailyReport();
 }
 
+// --- Daily Report ---
 function updateDailyReport() {
   const report = document.getElementById('daily-report');
   if (!report) return;
+
   report.innerHTML = '';
   const sortedKeys = Object.keys(localStorage)
-    .filter(k => /^\\d{4}-\\d{2}-\\d{2}$/.test(k))
+    .filter(k => /^\d{4}-\d{2}-\d{2}$/.test(k))
     .sort()
     .reverse();
+
   sortedKeys.forEach(key => {
     const sec = parseInt(localStorage.getItem(key));
     const time = formatTime(sec);
