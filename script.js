@@ -14,6 +14,7 @@ let timerInterval = null;
 let isRunning = false;
 let todaySeconds = 0;
 let wakeLock = null;
+let lastFrameData = null;
 
 const todayKey = new Date().toISOString().slice(0, 10);
 
@@ -59,35 +60,52 @@ async function startCamera() {
 }
 
 function detectFace() {
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+
   setInterval(async () => {
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
     const detection = await faceapi
       .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions())
       .withFaceLandmarks();
+
+    const currentFrame = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
 
     if (detection) {
       statusText.textContent = 'Face Detected — Studying';
       if (!isRunning) startTimer();
     } else {
-      // Fallback: Check if top head/hair region is visible
-      const canvas = document.createElement('canvas');
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-      const topStrip = ctx.getImageData(0, 0, canvas.width, canvas.height * 0.15).data;
-      let darkPixelCount = 0;
+      // Hair detection in top 20%
+      const topStrip = ctx.getImageData(0, 0, canvas.width, canvas.height * 0.2).data;
+      let darkPixels = 0;
       for (let i = 0; i < topStrip.length; i += 4) {
-        const r = topStrip[i];
-        const g = topStrip[i + 1];
-        const b = topStrip[i + 2];
-        const brightness = (r + g + b) / 3;
-        if (brightness < 60) darkPixelCount++;
+        const brightness = (topStrip[i] + topStrip[i + 1] + topStrip[i + 2]) / 3;
+        if (brightness < 60) darkPixels++;
       }
-      const darkRatio = darkPixelCount / (topStrip.length / 4);
+      const darkRatio = darkPixels / (topStrip.length / 4);
 
-      if (darkRatio > 0.15) {
-        statusText.textContent = 'Head Down — Writing Mode';
+      // Motion detection
+      let motionDetected = false;
+      if (lastFrameData) {
+        let changes = 0;
+        for (let i = 0; i < currentFrame.length; i += 4) {
+          const diff =
+            Math.abs(currentFrame[i] - lastFrameData[i]) +
+            Math.abs(currentFrame[i + 1] - lastFrameData[i + 1]) +
+            Math.abs(currentFrame[i + 2] - lastFrameData[i + 2]);
+          if (diff > 50) changes++;
+        }
+        const motionRatio = changes / (currentFrame.length / 4);
+        if (motionRatio > 0.02) motionDetected = true;
+      }
+
+      lastFrameData = currentFrame;
+
+      if (darkRatio > 0.15 && motionDetected) {
+        statusText.textContent = 'Writing Mode — Active';
         if (!isRunning) startTimer();
       } else {
         statusText.textContent = 'No Face — Paused';
