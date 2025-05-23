@@ -29,12 +29,8 @@ async function requestWakeLock() {
   try {
     if ('wakeLock' in navigator) {
       wakeLock = await navigator.wakeLock.request('screen');
-      console.log('Wake Lock is active');
     }
-  } catch (err) {
-    console.error(`Wake Lock failed: ${err.name}, ${err.message}`);
-  }
-
+  } catch (err) {}
   document.addEventListener('visibilitychange', async () => {
     if (wakeLock !== null && document.visibilityState === 'visible') {
       await requestWakeLock();
@@ -53,32 +49,50 @@ async function startCamera() {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ video: true });
     video.srcObject = stream;
-
     video.onloadedmetadata = () => {
       video.play();
       detectFace();
     };
   } catch (err) {
-    console.error(err);
-    if (err.name === 'NotAllowedError') {
-      statusText.textContent = 'Camera blocked. Allow it in Safari settings.';
-    } else {
-      statusText.textContent = 'Camera error: ' + err.message;
-    }
+    statusText.textContent = 'Camera error: ' + err.message;
   }
 }
 
 function detectFace() {
   setInterval(async () => {
     const detection = await faceapi
-      .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions());
+      .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions())
+      .withFaceLandmarks();
 
     if (detection) {
       statusText.textContent = 'Face Detected — Studying';
       if (!isRunning) startTimer();
     } else {
-      statusText.textContent = 'No Face — Paused';
-      if (isRunning) pauseTimer();
+      // Fallback: Check if top head/hair region is visible
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      const topStrip = ctx.getImageData(0, 0, canvas.width, canvas.height * 0.15).data;
+      let darkPixelCount = 0;
+      for (let i = 0; i < topStrip.length; i += 4) {
+        const r = topStrip[i];
+        const g = topStrip[i + 1];
+        const b = topStrip[i + 2];
+        const brightness = (r + g + b) / 3;
+        if (brightness < 60) darkPixelCount++;
+      }
+      const darkRatio = darkPixelCount / (topStrip.length / 4);
+
+      if (darkRatio > 0.15) {
+        statusText.textContent = 'Head Down — Writing Mode';
+        if (!isRunning) startTimer();
+      } else {
+        statusText.textContent = 'No Face — Paused';
+        if (isRunning) pauseTimer();
+      }
     }
   }, 1000);
 }
@@ -140,13 +154,11 @@ function loadStoredTimes() {
 function updateDailyReport() {
   const report = document.getElementById('daily-report');
   if (!report) return;
-
   report.innerHTML = '';
   const sortedKeys = Object.keys(localStorage)
-    .filter(k => /^\d{4}-\d{2}-\d{2}$/.test(k))
+    .filter(k => /^\\d{4}-\\d{2}-\\d{2}$/.test(k))
     .sort()
     .reverse();
-
   sortedKeys.forEach(key => {
     const sec = parseInt(localStorage.getItem(key));
     const time = formatTime(sec);
