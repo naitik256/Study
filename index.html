@@ -5,8 +5,39 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Study Stopwatch – Face Detection Study Timer</title>
 
-  <!-- (SEO / OG meta tags omitted here for brevity; keep the same as before) -->
+  <!-- SEO Meta Tags -->
+  <meta name="description" content="Track your study time automatically using face detection. Timer runs only when you're focused. No login. No data shared." />
+  <meta name="keywords" content="study timer, face detection stopwatch, auto study tracker, productivity, student focus timer" />
+  <meta name="author" content="Naitik Raj" />
 
+  <!-- Social Media Meta Tags -->
+  <meta property="og:title" content="Study Stopwatch – Face-Based Study Timer" />
+  <meta property="og:description" content="Track your study time smartly using face detection. Built for students." />
+  <meta property="og:image" content="https://naitik256.github.io/Study/thumbnail.png" />
+  <meta property="og:url" content="https://naitik256.github.io/Study" />
+  <meta name="twitter:card" content="summary_large_image" />
+
+  <!-- Favicon -->
+  <link rel="icon" href="favicon.ico" type="image/x-icon" />
+
+  <!-- Structured Data -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "Study Stopwatch",
+    "url": "https://naitik256.github.io/Study",
+    "description": "A face detection-based stopwatch that tracks your study time automatically.",
+    "applicationCategory": "EducationApplication",
+    "operatingSystem": "All",
+    "creator": {
+      "@type": "Person",
+      "name": "Naitik Raj"
+    }
+  }
+  </script>
+
+  <!-- Styles & Scripts -->
   <link rel="stylesheet" href="styles.css" />
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
   <script defer src="face-api.min.js"></script>
@@ -23,7 +54,7 @@
       <button id="reset">Reset</button>
     </div>
 
-    <div id="status">Loading models…</div>
+    <div id="status">Loading models...</div>
 
     <div class="report">
       <h3>Daily Report</h3>
@@ -42,12 +73,12 @@
 
   <div id="about" class="info-section">
     <h3>About</h3>
-    <p>This app helps you stay focused by tracking study time with face detection. The timer runs only when you’re truly studying—writing or reading—and pauses otherwise.</p>
+    <p>This app helps you stay focused by tracking study time using face detection. The timer starts automatically when you're visible and pauses when you're not. No login required.</p>
   </div>
 
   <div id="privacy" class="info-section">
     <h3>Privacy Policy</h3>
-    <p>Everything happens locally in your browser. No video or personal data ever leaves your device.</p>
+    <p>This app uses your camera locally to detect your presence. No photos or personal data are recorded or sent anywhere. Your study time is stored securely in your browser only.</p>
   </div>
 </body>
 </html>
