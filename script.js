@@ -1,157 +1,173 @@
+/*********************************************************************
+ * Study Stopwatch — Posture-Aware Version
+ *  • Face visible & head slightly down  →  studying
+ *  • Only hair/top-head visible (writing) →  studying
+ *  • Face small & high in frame (standing) →  pause
+ *  • Face close & eyes steep-down (phone)  →  pause
+ *********************************************************************/
+
 const video = document.createElement('video');
-video.setAttribute('autoplay', '');
-video.setAttribute('muted', '');
-video.setAttribute('playsinline', '');
+video.autoplay = true;
+video.muted = true;
+video.playsInline = true;
 document.body.appendChild(video);
 
-const statusText = document.getElementById('status');
-const stopwatchDisplay = document.getElementById('stopwatch');
-const resetBtn = document.getElementById('reset');
+// DOM refs
+const statusEl   = document.getElementById('status');
+const timeEl     = document.getElementById('stopwatch');
+const resetBtn   = document.getElementById('reset');
+const reportUL   = document.getElementById('daily-report');
 
-let startTime = 0;
-let elapsedTime = 0;
-let timerInterval = null;
-let isRunning = false;
-let todaySeconds = 0;
+// timer vars
+let startTime = 0, elapsed = 0, interval = null, studying = false;
+let lastStudyTS = 0;
+
+// persistence keys
+const todayKey = new Date().toISOString().slice(0,10);
+
+// Wake-Lock to keep screen on
 let wakeLock = null;
-
-const todayKey = new Date().toISOString().slice(0, 10);
-
-document.addEventListener('DOMContentLoaded', async () => {
-  await requestWakeLock();
-  loadStoredTimes();
-  await loadModels();
-  startCamera();
-  resetBtn.addEventListener('click', resetTimer);
-});
-
-async function requestWakeLock() {
-  try {
-    if ('wakeLock' in navigator) {
-      wakeLock = await navigator.wakeLock.request('screen');
-      console.log('Wake Lock is active');
-    }
-  } catch (err) {
-    console.error(`Wake Lock failed: ${err.name}, ${err.message}`);
-  }
-
-  document.addEventListener('visibilitychange', async () => {
-    if (wakeLock !== null && document.visibilityState === 'visible') {
-      await requestWakeLock();
-    }
-  });
+async function keepAwake(){
+  try{ if('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); }
+  catch(e){ console.log('Wake-Lock error',e); }
+  document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible') keepAwake(); });
 }
 
-async function loadModels() {
-  statusText.textContent = 'Loading models...';
+/* ---------- Face-API setup ---------- */
+async function loadModels(){
+  statusEl.textContent='Loading models…';
   await faceapi.nets.tinyFaceDetector.loadFromUri('models');
   await faceapi.nets.faceLandmark68Net.loadFromUri('models');
-  statusText.textContent = 'Ready';
+  statusEl.textContent='Models ready';
 }
 
-async function startCamera() {
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-    video.srcObject = stream;
-
-    video.onloadedmetadata = () => {
-      video.play();
-      detectFace();
-    };
-  } catch (err) {
-    console.error(err);
-    if (err.name === 'NotAllowedError') {
-      statusText.textContent = 'Camera blocked. Allow it in Safari settings.';
-    } else {
-      statusText.textContent = 'Camera error: ' + err.message;
-    }
-  }
+/* ---------- Camera ---------- */
+async function startCam(){
+  const stream=await navigator.mediaDevices.getUserMedia({video:true});
+  video.srcObject=stream;
+  video.onloadedmetadata=()=>video.play();
 }
 
-function detectFace() {
-  setInterval(async () => {
-    const detection = await faceapi
-      .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions());
-
-    if (detection) {
-      statusText.textContent = 'Face Detected — Studying';
-      if (!isRunning) startTimer();
-    } else {
-      statusText.textContent = 'No Face — Paused';
-      if (isRunning) pauseTimer();
-    }
-  }, 1000);
+/* ---------- Timer helpers ---------- */
+function fmt(sec){
+  const h=String(Math.floor(sec/3600)).padStart(2,'0');
+  const m=String(Math.floor(sec%3600/60)).padStart(2,'0');
+  const s=String(sec%60).padStart(2,'0');
+  return `${h}:${m}:${s}`;
 }
+function updateDisplay(){ timeEl.textContent = fmt(Math.floor(elapsed/1000)); }
 
-function startTimer() {
-  startTime = Date.now() - elapsedTime;
-  timerInterval = setInterval(updateTime, 1000);
-  isRunning = true;
-}
-
-function pauseTimer() {
-  clearInterval(timerInterval);
-  timerInterval = null;
-  isRunning = false;
-  saveTimes();
-}
-
-function resetTimer() {
-  pauseTimer();
-  todaySeconds = 0;
-  elapsedTime = 0;
-  updateDisplay();
-  localStorage.removeItem(todayKey);
-  updateDailyReport();
-}
-
-function updateTime() {
-  elapsedTime = Date.now() - startTime;
-  todaySeconds = Math.floor(elapsedTime / 1000);
-  updateDisplay();
-}
-
-function updateDisplay() {
-  stopwatchDisplay.textContent = formatTime(todaySeconds);
-}
-
-function formatTime(sec) {
-  const hrs = String(Math.floor(sec / 3600)).padStart(2, '0');
-  const mins = String(Math.floor((sec % 3600) / 60)).padStart(2, '0');
-  const secs = String(sec % 60).padStart(2, '0');
-  return `${hrs}:${mins}:${secs}`;
-}
-
-function saveTimes() {
-  localStorage.setItem(todayKey, todaySeconds);
-  updateDailyReport();
-}
-
-function loadStoredTimes() {
-  const saved = localStorage.getItem(todayKey);
-  if (saved) {
-    todaySeconds = parseInt(saved);
-    elapsedTime = todaySeconds * 1000;
+/* ---------- Timer control ---------- */
+function startTimer(){
+  if(studying) return;
+  studying = true; lastStudyTS = Date.now();
+  startTime = Date.now() - elapsed;
+  interval = setInterval(()=>{
+    elapsed = Date.now()-startTime;
     updateDisplay();
+  },1000);
+}
+function pauseTimer(){
+  if(!studying) return;
+  studying=false; clearInterval(interval);
+  saveTodaySeconds(); updateDailyReport();
+}
+
+/* ---------- Storage ---------- */
+function saveTodaySeconds(){
+  localStorage.setItem(todayKey, Math.floor(elapsed/1000));
+}
+function loadTodaySeconds(){
+  const sec = parseInt(localStorage.getItem(todayKey))||0;
+  elapsed = sec*1000; updateDisplay();
+}
+
+/* ---------- Daily report list ---------- */
+function updateDailyReport(){
+  reportUL.innerHTML='';
+  Object.keys(localStorage)
+    .filter(k=>/^\d{4}-\d{2}-\d{2}$/.test(k))
+    .sort().reverse()
+    .forEach(k=>{
+      const li=document.createElement('li');
+      li.textContent = `${k}: ${fmt(parseInt(localStorage.getItem(k)))}`;
+      reportUL.appendChild(li);
+    });
+}
+
+/* ---------- Posture classification ---------- */
+function classifyPose(det){
+  const box = det.box;
+  const h   = box.height;
+  const top = box.top;
+
+  const lm  = det.landmarks;
+  const nose = lm.getNose()[3];
+  const leftEye = lm.getLeftEye()[3];
+  const eyeDiffY = nose.y - leftEye.y; // how far nose is below eye
+
+  // Reading-screen pose
+  const readingPose = (eyeDiffY > 5 && eyeDiffY < 30) && (h > 120) && (top > 40);
+
+  // Standing / far pose
+  const standingPose = (h < 100 && top < 100);
+
+  // Phone-close pose (face very large + eyes steep down)
+  const phonePose = (h > 180 && eyeDiffY > 25);
+
+  if(readingPose) return 'reading';
+  if(phonePose)   return 'phone';
+  if(standingPose) return 'standing';
+  return 'unknown';
+}
+
+/* ---------- Detection loop ---------- */
+async function detectLoop(){
+  const det = await faceapi.detectSingleFace(video,new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks();
+
+  if(det){
+    const pose = classifyPose(det);
+
+    if(pose==='reading'){                    // screen study
+      statusEl.textContent='Reading — Studying';
+      startTimer();
+    }
+    else if(pose==='phone' || pose==='standing'){ // distraction
+      statusEl.textContent = pose==='phone' ? 'Phone detected — Paused' : 'Standing — Paused';
+      pauseTimer();
+    }
+    else{                                    // uncertain (maybe slight head down)
+      statusEl.textContent='Uncertain pose';
+      pauseTimer();
+    }
+  }else{
+    /* No face visible — maybe writing?
+       Allow up to 180 s grace if user was just studying */
+    if(Date.now()-lastStudyTS < 180000){
+      statusEl.textContent='Writing — Studying';
+      startTimer();
+    }else{
+      statusEl.textContent='No Face — Paused';
+      pauseTimer();
+    }
   }
-  updateDailyReport();
+  requestAnimationFrame(detectLoop);
 }
 
-function updateDailyReport() {
-  const report = document.getElementById('daily-report');
-  if (!report) return;
+/* ---------- Main ---------- */
+document.addEventListener('DOMContentLoaded',async()=>{
+  await keepAwake();
+  loadTodaySeconds(); updateDailyReport();
 
-  report.innerHTML = '';
-  const sortedKeys = Object.keys(localStorage)
-    .filter(k => /^\d{4}-\d{2}-\d{2}$/.test(k))
-    .sort()
-    .reverse();
+  await loadModels();
+  await startCam();
 
-  sortedKeys.forEach(key => {
-    const sec = parseInt(localStorage.getItem(key));
-    const time = formatTime(sec);
-    const li = document.createElement('li');
-    li.textContent = `${key}: ${time}`;
-    report.appendChild(li);
+  resetBtn.addEventListener('click',()=>{
+    pauseTimer();
+    elapsed=0; updateDisplay();
+    localStorage.removeItem(todayKey);
+    updateDailyReport();
   });
-}
+
+  detectLoop(); // start detection
+});
