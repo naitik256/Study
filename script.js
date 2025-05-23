@@ -1,4 +1,3 @@
-// --- Initialization ---
 const video = document.createElement('video');
 video.setAttribute('autoplay', '');
 video.setAttribute('muted', '');
@@ -15,9 +14,9 @@ let timerInterval = null;
 let isRunning = false;
 let todaySeconds = 0;
 let wakeLock = null;
+
 const todayKey = new Date().toISOString().slice(0, 10);
 
-// --- DOM Loaded ---
 document.addEventListener('DOMContentLoaded', async () => {
   await requestWakeLock();
   loadStoredTimes();
@@ -26,11 +25,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   resetBtn.addEventListener('click', resetTimer);
 });
 
-// --- Wake Lock ---
 async function requestWakeLock() {
   try {
     if ('wakeLock' in navigator) {
       wakeLock = await navigator.wakeLock.request('screen');
+      console.log('Wake Lock is active');
     }
   } catch (err) {
     console.error(`Wake Lock failed: ${err.name}, ${err.message}`);
@@ -43,7 +42,6 @@ async function requestWakeLock() {
   });
 }
 
-// --- Load face-api.js Models ---
 async function loadModels() {
   statusText.textContent = 'Loading models...';
   await faceapi.nets.tinyFaceDetector.loadFromUri('models');
@@ -51,24 +49,25 @@ async function loadModels() {
   statusText.textContent = 'Ready';
 }
 
-// --- Start Camera ---
 async function startCamera() {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ video: true });
     video.srcObject = stream;
+
     video.onloadedmetadata = () => {
       video.play();
       detectFace();
     };
   } catch (err) {
     console.error(err);
-    statusText.textContent = err.name === 'NotAllowedError'
-      ? 'Camera blocked. Allow it in Safari settings.'
-      : 'Camera error: ' + err.message;
+    if (err.name === 'NotAllowedError') {
+      statusText.textContent = 'Camera blocked. Allow it in Safari settings.';
+    } else {
+      statusText.textContent = 'Camera error: ' + err.message;
+    }
   }
 }
 
-// --- Face Detection ---
 function detectFace() {
   setInterval(async () => {
     const detection = await faceapi
@@ -84,7 +83,6 @@ function detectFace() {
   }, 1000);
 }
 
-// --- Timer Functions ---
 function startTimer() {
   startTime = Date.now() - elapsedTime;
   timerInterval = setInterval(updateTime, 1000);
@@ -124,7 +122,6 @@ function formatTime(sec) {
   return `${hrs}:${mins}:${secs}`;
 }
 
-// --- Storage ---
 function saveTimes() {
   localStorage.setItem(todayKey, todaySeconds);
   updateDailyReport();
@@ -140,7 +137,6 @@ function loadStoredTimes() {
   updateDailyReport();
 }
 
-// --- Daily Report ---
 function updateDailyReport() {
   const report = document.getElementById('daily-report');
   if (!report) return;
